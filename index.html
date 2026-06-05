@@ -416,6 +416,13 @@ let S={
 function load(){ /* reemplazado por Firebase */ }
 function continuarSesion(){ /* no usado — Firebase maneja sesión */ }
 function save(){ if(window._fbSave) window._fbSave(S); }
+
+// ── AUTOSAVE ──────────────────────────────────────────────────────────
+let _autoSaveTimer=null;
+function autoSave(){
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer=setTimeout(()=>{ if(window._fbSave) window._fbSave(S); },2000);
+}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.className='toast show';setTimeout(()=>t.className='toast',3200);}
 function ag(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -1150,6 +1157,14 @@ function init(){
   }
   if(window._fbOnAuth){onFirebaseReady();}
   else{document.addEventListener('firebase-ready',onFirebaseReady);}
+
+  // Autosave en cualquier input/textarea/select del formulario
+  document.addEventListener('input', function(e){
+    if(e.target.matches('input,textarea,select')) autoSave();
+  });
+  document.addEventListener('change', function(e){
+    if(e.target.matches('input,textarea,select')) autoSave();
+  });
 }
 window.onclick=e=>{
   if(e.target===document.getElementById('modal-tipos'))cerrarTipos();
