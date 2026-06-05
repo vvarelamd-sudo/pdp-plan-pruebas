@@ -14,7 +14,7 @@ window._fbSave=async function(items){
   await setDoc(doc(db,"pdp-reportes",DOC_ID),{items:JSON.stringify(items),ts:Date.now()});
   setSyncMsg('☁ Sincronizado · '+new Date().toLocaleTimeString());}
   catch(e){setSyncMsg('❌ Error: '+e.message);}
-  finally{setTimeout(()=>{_localUpdate=false;},600);}
+  finally{setTimeout(()=>{_localUpdate=false;},300);}
 };
 window._fbListen=function(onData){
   return onSnapshot(doc(db,"pdp-reportes",DOC_ID),(snap)=>{
@@ -89,8 +89,53 @@ document.dispatchEvent(new Event("firebase-ready"));
       }
       // Escuchar cambios remotos
       window._fbListen(function(remoteItems){
-        _items=remoteItems;
-        rRender(_editMode);
+        if(!_editMode){
+          // Sin edición: reemplazar todo
+          _items=remoteItems;
+          rRender(false);
+          return;
+        }
+        // En edición: merge inteligente — preservar fila activa, actualizar el resto
+        var focused=document.activeElement;
+        var activeTr=focused?focused.closest('tr'):null;
+        var tb=document.getElementById('r-tbody');
+        var activeIdx=-1;
+        if(activeTr&&tb){
+          var rows=Array.from(tb.querySelectorAll('tr'));
+          activeIdx=rows.indexOf(activeTr);
+        }
+        // Sincronizar DOM antes del merge
+        rSyncDOM();
+        // Merge: para cada item remoto, si no es la fila activa, actualizar
+        remoteItems.forEach(function(remoteItem,i){
+          if(i===activeIdx) return; // no tocar la fila que está editando
+          if(i<_items.length){
+            // Preservar campos locales solo si la fila tiene foco
+            _items[i]=remoteItem;
+          } else {
+            _items.push(remoteItem);
+          }
+        });
+        // Eliminar filas extra si el remoto tiene menos
+        if(remoteItems.length<_items.length){
+          _items.splice(remoteItems.length);
+        }
+        // Re-renderizar preservando posición de scroll
+        var scrollY=window.scrollY;
+        rRender(_editMode,true);
+        window.scrollTo(0,scrollY);
+        // Restaurar foco si se perdió
+        if(activeIdx>=0&&focused&&focused.tagName){
+          setTimeout(function(){
+            var newTb=document.getElementById('r-tbody');
+            if(!newTb)return;
+            var newRows=Array.from(newTb.querySelectorAll('tr'));
+            if(newRows[activeIdx]){
+              var sameTag=newRows[activeIdx].querySelector(focused.tagName.toLowerCase());
+              if(sameTag)sameTag.focus();
+            }
+          },50);
+        }
       });
     });
   }
