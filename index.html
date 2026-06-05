@@ -9,16 +9,57 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
 const firebaseConfig={apiKey:"AIzaSyDx5U3AL1Lqq6Gl4v6pzNkeN2EjROIayLY",authDomain:"pdp-plan-de-pruebas.firebaseapp.com",projectId:"pdp-plan-de-pruebas",storageBucket:"pdp-plan-de-pruebas.firebasestorage.app",messagingSenderId:"286151022692",appId:"1:286151022692:web:1db8777a3438071c192771"};
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 const auth=getAuth(app);
+
+function setSyncMsg(msg){
+  const el=document.getElementById('sync-banner-msg');
+  if(el) el.textContent=msg;
+}
+
 let _localUpdate=false;
-window._fbSave=async function(state){try{_localUpdate=true;await setDoc(doc(db,"pdp","estado"),{data:JSON.stringify(state),ts:Date.now()});}catch(e){console.error("Firebase save error:",e);}finally{setTimeout(()=>{_localUpdate=false;},600);}};
-window._fbListen=function(onData){return onSnapshot(doc(db,"pdp","estado"),(snap)=>{if(_localUpdate)return;if(snap.exists()){try{onData(JSON.parse(snap.data().data));}catch(e){}}});};
-window._fbSignIn=async function(){try{await signInWithRedirect(auth,new GoogleAuthProvider());}catch(e){alert("Error de login: "+e.message);}};
-window._fbSignOut=async function(){await signOut(auth);};
-window._fbOnAuth=function(cb){getRedirectResult(auth).catch(()=>{});onAuthStateChanged(auth,cb);};
+
+window._fbSave=async function(state){
+  try{
+    _localUpdate=true;
+    setSyncMsg('💾 Guardando...');
+    await setDoc(doc(db,"pdp","estado"),{data:JSON.stringify(state),ts:Date.now()});
+    setSyncMsg('☁ Sincronizado en tiempo real');
+  }catch(e){
+    setSyncMsg('❌ Error al guardar: '+e.message);
+    console.error("Firebase save error:",e);
+  }finally{
+    setTimeout(()=>{_localUpdate=false;},600);
+  }
+};
+
+window._fbListen=function(onData){
+  setSyncMsg('🔄 Conectando...');
+  return onSnapshot(doc(db,"pdp","estado"),(snap)=>{
+    setSyncMsg('☁ Sincronizado · '+ new Date().toLocaleTimeString());
+    if(_localUpdate) return;
+    if(snap.exists()){
+      try{ onData(JSON.parse(snap.data().data)); }
+      catch(e){ console.error('Parse error:',e); }
+    }
+  }, (err)=>{
+    setSyncMsg('❌ Error de conexión: '+err.message);
+    console.error('Snapshot error:',err);
+  });
+};
+
+window._fbSignIn=async function(){
+  try{ await signInWithRedirect(auth,new GoogleAuthProvider()); }
+  catch(e){ alert("Error de login: "+e.message); }
+};
+window._fbSignOut=async function(){ await signOut(auth); };
+window._fbOnAuth=function(cb){
+  getRedirectResult(auth).catch(()=>{});
+  onAuthStateChanged(auth,cb);
+};
 document.dispatchEvent(new Event("firebase-ready"));
 </script>
 <style>
@@ -365,7 +406,7 @@ table.t tr:hover td{background:rgba(37,99,235,.02);}
 </div>
 <!-- SYNC BANNER -->
 <div id="sync-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#1e40af;color:#fff;font-family:Inter,sans-serif;font-size:13px;padding:10px 20px;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 2px 12px rgba(0,0,0,0.2)">
-  <span>☁ Sincronizado en tiempo real</span>
+  <span id="sync-banner-msg">☁ Sincronizado en tiempo real</span>
   <div style="display:flex;align-items:center;gap:12px;">
     <span id="sync-user" style="font-size:12px;opacity:0.8;"></span>
     <button onclick="window._fbSignOut().then(()=>location.reload())" style="background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,0.5);border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer;">Cerrar sesión</button>
