@@ -642,6 +642,13 @@ function renderEquip(){
 function valCfg(){
   const el=document.getElementById('cfg-proyecto');
   const proy=el?el.value.trim():(S.cfg.proyecto||'');
+  // Actualizar S.cfg en tiempo real para que autoSave sincronice
+  if(el) S.cfg.proyecto=el.value.trim();
+  const fe=document.getElementById('cfg-fecha');
+  if(fe) S.cfg.fecha=fe.value;
+  const ve=document.getElementById('cfg-version');
+  if(ve) S.cfg.version=ve.value.trim();
+  autoSave();
   const allAmb=[...AMB_APLIC,...AMB_SUB].every(a=>S.cfg.ambientes[a.key]==='SI'||S.cfg.ambientes[a.key]==='NO');
   // Si algún ambiente OTROS está en SI, debe tener texto
   const otrosAmbOk=[...AMB_APLIC,...AMB_SUB].every(a=>{
