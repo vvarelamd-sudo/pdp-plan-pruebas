@@ -1,0 +1,11 @@
+{
+  "hosting": {
+    "site": "pdp-plan-de-pruebas",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}
